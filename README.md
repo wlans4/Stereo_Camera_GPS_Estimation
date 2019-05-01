@@ -1,6 +1,6 @@
 # Stereo_Vision
 
-This project uses two cameras on a sailboat in order to estimate the GPS location of a buoy
+This project uses two cameras on a sailboat in order to estimate the GPS location of a buoy. It requires a current and updating GPS location as the boat moves, as well as an assumption that the cameras will not move with respect to the boat once secured in place and calibrated.
 
 
 1. Image_Capture.py
