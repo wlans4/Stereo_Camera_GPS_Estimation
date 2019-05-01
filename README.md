@@ -1,11 +1,6 @@
 # Stereo_Vision
 
-This project uses two cameras in order to produce a matrix for distance calculations.
-
-0: test_cameras.py
-
-Use this file to test where the checkerboard images are in each camera
-
+This project uses two cameras on a sailboat in order to estimate the GPS location of a buoy
 
 
 1. Image_Capture.py
