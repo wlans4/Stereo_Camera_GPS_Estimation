@@ -5,12 +5,11 @@ import cv2
 from time import sleep
 
 ###
-#Solve PnP function
 # This is the real size of the single squares (print with laser)
 # psi camera
 CHESSBOARD_SQUARE_SIZE = .0265 #Length of square of checkerboard in meters
 #Frame rate over resolution
-CHESSBOARD_CALIBRATION_SIZE = (5,7)
+CHESSBOARD_CALIBRATION_SIZE = (6,9)
 CHESSBOARD_OPTIONS = (cv2.CALIB_CB_NORMALIZE_IMAGE | cv2.CALIB_CB_FAST_CHECK | cv2.CALIB_CB_ADAPTIVE_THRESH)
 DRAW_IMAGE = True
 
@@ -72,7 +71,7 @@ def findChessboards(imageDirectory):
     :param imageDirectory: the directory to look through for chessboard images
     :return: names of the files, the object points list, the image points list, resolution of the camera
     """
-    out_file = "{0}/chessboards.npz".format(imageDirectory)
+    #out_file = "{0}/chessboards.npz".format(imageDirectory)
     print("Reading images at {0}".format(imageDirectory))
     images = glob.glob("{0}/*.png".format(imageDirectory))
 
@@ -106,7 +105,7 @@ def findChessboards(imageDirectory):
 
     print("Found corners in {0} out of {1} images".format(len(image_points), len(images)))
 
-    np.savez_compressed(out_file, file_names = file_names, object_points = object_points, image_points = image_points, imageSize = left_camera_size)
+    #np.savez_compressed(out_file, file_names = file_names, object_points = object_points, image_points = image_points, imageSize = left_camera_size)
     return file_names, object_points, image_points, left_camera_size
 
 
