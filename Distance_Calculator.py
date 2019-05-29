@@ -1,23 +1,17 @@
 import numpy as np
 import cv2
-from src.buoy_detection.Depth_Map_Calculator import Depth_Map as Depth
+from src.buoy_detection.Depth_Map_Calculator import Depth_Map
 from math import sin, cos, asin, atan2, pi
 import os
 class DistanceCalculator():
     path = os.path.realpath(__file__)[:-len(os.path.basename(__file__))] + "stereo_calibration.npz"
 
-    def __init__(self, calibration_directory = path, DRAW_IMAGE = False):
+    def __init__(self, calibration_directory = path, camera_baseline=.2, camera_numbers=(2,3), DRAW_IMAGE = False):
 
         self.DRAW_IMAGE = DRAW_IMAGE
-        self.RED_ORANGE_LOW = np.array([0, 150, 150])
-        self.RED_ORANGE_HIGH = np.array([15, 255, 255])
-        self.PURPLE_RED_LOW = np.array([160, 100, 100])
-        self.PURPLE_RED_HIGH = np.array([180, 255, 255])
-        self.kernel = np.ones((7, 7), np.uint8)
-        self.depth_map_calculator = Depth(calibration_directory, DRAW_IMAGE = False)
-        self.DRAW_IMAGE = DRAW_IMAGE
+        self.depth_map_calculator = Depth_Map(calibration_directory, baseline = camera_baseline, camera_numbers=camera_numbers, DRAW_IMAGE = DRAW_IMAGE)
 
-    def findBuoyPixels(self):
+    def findBuoyPixels(self, left_frame):
         """
         Determine if the left camera has an image of the of buoy in it using color and shape. The calibration setup
         has the left camera as the primary camera, so the disparity map pixels are equivalent to the ones in the disparity map.
@@ -25,33 +19,33 @@ class DistanceCalculator():
         :return:
         The pixels in which we see the buoy
         """
-        frame = self.depth_map_calculator.calculateDepthMap()
-        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
 
-        RED_ORANGE_LOW = np.array([100, 100, 0])
-        RED_ORANGE_HIGH = np.array([255, 230, 200])
-        kernel_open = np.ones((6, 6))
-        kernel_close = np.ones((10, 10))
+        kernel_close = np.ones((2, 2))
+        kernel_open = np.ones((12, 12))
 
-        mask = cv2.inRange(hsv, RED_ORANGE_LOW, RED_ORANGE_HIGH)
+        frame_copy = left_frame
+
+        hsv = cv2.cvtColor(left_frame, cv2.COLOR_BGR2HSV)
+
+        # mask = cv2.inRange(hsv, RED_ORANGE_LOW, RED_ORANGE_HIGH)
+        mask = cv2.inRange(hsv, (10, 100, 20), (15, 255, 255))
         mask_open = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_open)
-        mask_close = cv2.morphologyEx(mask_open, cv2.MORPH_CLOSE, kernel_close)
+        mask = mask_open
+        mask_close = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_close)
         mask = mask_close
-
         contours, __ = cv2.findContours(mask.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        if len(contours) <= 0:
-            return None
-        elif len(contours) > 0:
+        if len(contours) > 0:
             biggest = sorted(contours, key=cv2.contourArea)[-1]
             if self.DRAW_IMAGE:
-                cv2.drawContours(frame, contours, -1, (0, 255, 0), 3)
+                cv2.drawContours(left_frame, contours, -1, (0, 255, 0), 3)
                 x, y, w, h = cv2.boundingRect(biggest)
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                cv2.rectangle(left_frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
             moment = cv2.moments(biggest)
             return int(moment['m10'] / moment['m00']), int(moment['m01'] / moment['m00'])
+        raise Exception("No buoy found in image")
+        return None
 
-
-    def getDisparityValue(self, xPixel, yPixel):
+    def getDisparityValue(self, disparity_frame, xPixel, yPixel):
         """
         Gets the disparity value from the disparity matrix if it is near an edge. Otherwise, gets an average of disparity values from surrounding pixels
 
@@ -59,17 +53,17 @@ class DistanceCalculator():
         :param yPixel: the y coordinate in the disparity map
         :return: the disparity value
         """
-        disparity = self.depth_map_calculator.calculateDepthMap()
 
-        if disparity is None:
+        if disparity_frame is None:
+            print("disparity is None")
             return None
 
         #If the detected center pixel is near the edges, return just the disparity of that one pixel
         if xPixel <= 1 or yPixel <= 1 or xPixel >= 639 or yPixel >= 479:
-            return disparity[xPixel][yPixel]
+            return disparity_frame[xPixel][yPixel]
 
         #Otherwise, return the average of the surrounding pixels for a little more accuracy
-        array = disparity[xPixel - 1: xPixel + 1, yPixel - 1: yPixel + 1]
+        array = disparity_frame[xPixel - 1: xPixel + 1, yPixel - 1: yPixel + 1]
         return sum(array)/array.size
 
     def getDistance(self, disparity_value):
@@ -116,7 +110,6 @@ class DistanceCalculator():
         :param bearing:  the bearing (angle) to the buoy in radians
         :return:
         """
-        int
         earth_radius = 6371000;
         distance = distance / earth_radius
         # First attempt (might work?)
@@ -133,7 +126,3 @@ class DistanceCalculator():
         lon2 = (lon2 + 3 * pi) % (2 * pi) - pi;
 
         return np.rad2deg(lat2), np.rad2deg(lon2)
-
-# Example usage:
-#dist = DistanceCalculator("/home/wlans4/PycharmProjects/sailbot-19/src/buoy_detection/buoy_detection/stereo_calibration.npz")
-#dist.getDisparity()
